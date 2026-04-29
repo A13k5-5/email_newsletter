@@ -12,7 +12,7 @@ async fn main() -> Result<(), std::io::Error> {
             .route("/", web::get().to(greet))
             .route("/{name}", web::get().to(greet))
     })
-    .bind("127.0.0.1:8000")?
+    .bind(("127.0.0.1", 8000))?
     .run()
     .await
 }
