@@ -7,7 +7,7 @@ fn spawn_app() -> String {
 
     // Retrieve the port assigned by the OS
     let port = listener.local_addr().unwrap().port();
-    let server = zero2prod::run(listener).expect("Failed to bind address");
+    let server = zero2prod::startup::run(listener).expect("Failed to bind address");
     // Launch the server as a background task
     let _ = tokio::spawn(server);
     format!("http://127.0.0.1:{}", port)
