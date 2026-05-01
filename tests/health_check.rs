@@ -1,5 +1,5 @@
-use std::net::TcpListener;
 use sqlx::{Connection, PgConnection};
+use std::net::TcpListener;
 use zero2prod::configuration::get_configuration;
 
 /// Spin up an instance of the application server with address assigned by the OS.
@@ -49,11 +49,16 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
         .await
         .expect("Failed to execute request");
 
-    let mut connection = PgConnection::connect(&connection_string).await.expect("Failed to connect to Postgres.");
+    let mut connection = PgConnection::connect(&connection_string)
+        .await
+        .expect("Failed to connect to Postgres.");
 
     assert_eq!(200, response.status());
 
-    let saved = sqlx::query!("SELECT email, name FROM subscriptions",).fetch_one(&mut connection).await.expect("Failed to fetch saved subscription.");
+    let saved = sqlx::query!("SELECT email, name FROM subscriptions",)
+        .fetch_one(&mut connection)
+        .await
+        .expect("Failed to fetch saved subscription.");
 
     assert_eq!(saved.email, "ursula_le_guin@gmail.com");
     assert_eq!(saved.name, "le guin");
