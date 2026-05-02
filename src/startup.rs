@@ -1,9 +1,9 @@
 use super::routes;
 use actix_web::dev::Server;
+use actix_web::middleware::Logger;
 use actix_web::{App, HttpServer, web};
 use sqlx::PgPool;
 use std::net::TcpListener;
-use actix_web::middleware::Logger;
 
 pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Error> {
     let db_pool = web::Data::new(db_pool);
