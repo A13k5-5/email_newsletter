@@ -1,6 +1,6 @@
-use serde_aux::prelude::deserialize_number_from_string;
 use secrecy::ExposeSecret;
 use secrecy::SecretString;
+use serde_aux::prelude::deserialize_number_from_string;
 use sqlx::ConnectOptions;
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
 
@@ -47,7 +47,6 @@ impl DatabaseSettings {
         options = options.log_statements(tracing_log::log::LevelFilter::Trace);
         options
     }
-
 }
 
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {

@@ -10,8 +10,7 @@ async fn main() -> Result<(), std::io::Error> {
     init_subscriber(subscriber);
 
     let configuration = get_configuration().expect("Failed to read configuration.");
-    let connection_pool =
-        PgPool::connect_lazy_with(configuration.database.with_db());
+    let connection_pool = PgPool::connect_lazy_with(configuration.database.with_db());
 
     let address = format!(
         "{}:{}",
