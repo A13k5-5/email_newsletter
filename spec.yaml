@@ -13,3 +13,7 @@ services:
     http_path: /health_check
   instance_size_slug: basic-xxs
   instance_count: 1
+databases:
+- name: newsletter
+  engine: PG
+  production: false
