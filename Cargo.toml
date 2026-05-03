@@ -30,3 +30,4 @@ tracing-log = "0.2.0"
 tracing-subscriber = { version = "0.3.23", features = ["registry", "env-filter"] }
 unicode-segmentation = "1.13.2"
 uuid = { version = "1.23.1", features = ["v4"] }
+validator = { version = "0.20.0", features = ["derive"] }
