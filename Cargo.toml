@@ -32,9 +32,10 @@ validator = { version = "0.20.0", features = ["derive"] }
 tokio = { version = "1.52.1", features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
+claims = "0.8.0"
 fake = "5.1.0"
 quickcheck = "1.1.0"
 quickcheck_macros = "1.2.0"
-claims = "0.8.0"
+serde_json = "1.0.149"
 tokio = { version = "1.52.1", features = ["macros", "rt"] }
 wiremock = "0.6.5"

@@ -38,8 +38,7 @@ impl EmailClient {
             text_body: text_content.to_string(),
             html_body: html_content.to_string(),
         };
-        self
-            .http_client
+        self.http_client
             .post(&url)
             .header(
                 "X-Postmark-Server-Token",
@@ -52,7 +51,8 @@ impl EmailClient {
     }
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "PascalCase")]
 struct SendEmailRequest {
     from: String,
     to: String,
@@ -69,11 +69,34 @@ mod tests {
     use fake::faker::lorem::en::Sentence;
     use fake::{Fake, Faker};
     use secrecy::SecretString;
-    use wiremock::matchers::any;
-    use wiremock::{Mock, MockServer, ResponseTemplate};
+    use serde_json::{Error, Value};
+    use wiremock::matchers::{header, header_exists, method, path};
+    use wiremock::{Mock, MockServer, Request, ResponseTemplate};
+
+    struct SendEmailBodyMatcher;
+
+    impl wiremock::Match for SendEmailBodyMatcher {
+        fn matches(&self, request: &Request) -> bool {
+            // This matches implementation works - but assumes the names of the fields are correct in SendEmailRequest struct
+            // let result: Result<SendEmailRequest, _> = serde_json::from_slice(&request.body);
+            // result.is_ok()
+
+            let result: Result<serde_json::Value, _> = serde_json::from_slice(&request.body);
+            if let Ok(body) = result {
+                dbg!(&body);
+                body.get("From").is_some()
+                    && body.get("To").is_some()
+                    && body.get("Subject").is_some()
+                    && body.get("HtmlBody").is_some()
+                    && body.get("TextBody").is_some()
+            } else {
+                false
+            }
+        }
+    }
 
     #[tokio::test]
-    async fn send_email_fires_a_request_to_base_url() {
+    async fn send_email_sends_the_expected_request() {
         // Arrange
         let mock_server = MockServer::start().await;
         let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
@@ -83,7 +106,11 @@ mod tests {
             SecretString::from(Faker.fake::<String>()),
         );
 
-        Mock::given(any())
+        Mock::given(header_exists("X-Postmark-Server-Token"))
+            .and(header("Content-type", "application/json"))
+            .and(path("/email"))
+            .and(method("POST"))
+            .and(SendEmailBodyMatcher)
             .respond_with(ResponseTemplate::new(200))
             .expect(1) // the mock server should receive exactly 1 request - the expectation is verified at the end of the test
             .mount(&mock_server)
