@@ -14,8 +14,9 @@ impl EmailClient {
         base_url: String,
         sender: SubscriberEmail,
         authorization_token: SecretString,
+        timeout: std::time::Duration,
     ) -> Self {
-        let http_client = Client::builder().timeout(std::time::Duration::from_secs(10)).build().unwrap();
+        let http_client = Client::builder().timeout(timeout).build().unwrap();
         Self {
             http_client,
             base_url,
@@ -96,6 +97,7 @@ mod tests {
             base_url,
             email(),
             SecretString::from(Faker.fake::<String>()),
+            std::time::Duration::from_millis(200), // for faster test speeds
         )
     }
 
@@ -205,7 +207,12 @@ mod tests {
 
         // Act
         let outcome = email_client
-            .send_email(email(), &crate::email_client::tests::subject(), &crate::email_client::tests::content(), &crate::email_client::tests::content())
+            .send_email(
+                email(),
+                &crate::email_client::tests::subject(),
+                &crate::email_client::tests::content(),
+                &crate::email_client::tests::content(),
+            )
             .await;
 
         // Assert
