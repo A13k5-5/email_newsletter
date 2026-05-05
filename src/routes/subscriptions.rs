@@ -43,7 +43,9 @@ pub async fn subscribe(
         return HttpResponse::InternalServerError().finish();
     }
 
-    if send_confirmation_email(&email_client, new_subscriber).await.is_err()
+    if send_confirmation_email(&email_client, new_subscriber)
+        .await
+        .is_err()
     {
         return HttpResponse::InternalServerError().finish();
     }
@@ -86,7 +88,6 @@ pub async fn send_confirmation_email(
     email_client: &EmailClient,
     new_subscriber: NewSubscriber,
 ) -> Result<(), reqwest::Error> {
-
     let confirmation_link = "https://there-is-no-such-link.com/subscriptions/confirm";
     let html_body = format!(
         "Welcome to our newsletter!<br />\

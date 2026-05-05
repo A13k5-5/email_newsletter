@@ -1,4 +1,5 @@
 use once_cell::sync::Lazy;
+use reqwest::Response;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use wiremock::MockServer;
@@ -25,12 +26,18 @@ pub struct TestApp {
 }
 
 impl TestApp {
-    pub async fn post_subscriptions(&self, body: String) -> reqwest::Response {
+    pub async fn post_subscriptions(&self, body: String) -> Response {
         reqwest::Client::new()
             .post(format!("{}/subscriptions", self.address))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(body)
             .send()
+            .await
+            .expect("Failed to execute request")
+    }
+
+    pub async fn get_confirm(&self) -> Response {
+        reqwest::get(format!("{}/subscriptions/confirm", self.address))
             .await
             .expect("Failed to execute request")
     }
