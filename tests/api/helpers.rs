@@ -1,5 +1,5 @@
 use once_cell::sync::Lazy;
-use reqwest::Response;
+use reqwest::{Response, Url};
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use wiremock::MockServer;
@@ -26,6 +26,12 @@ pub struct TestApp {
     pub email_server: MockServer,
 }
 
+/// Confirmation links embedded in the request to the email API
+pub struct ConfirmationLinks {
+    pub html: Url,
+    pub plain_text: Url
+}
+
 impl TestApp {
     pub async fn post_subscriptions(&self, body: String) -> Response {
         reqwest::Client::new()
@@ -35,6 +41,36 @@ impl TestApp {
             .send()
             .await
             .expect("Failed to execute request")
+    }
+
+    /// Extract the confirmation links embedded in the request to the email API
+    pub fn get_confirmation_links(&self, email_request: &wiremock::Request) -> ConfirmationLinks {
+
+        // Parse the body as JSON, starting from raw bytes
+        let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
+        // Extract the link from one of the request fields
+        let get_link = |s: &str| {
+            let links: Vec<_> = linkify::LinkFinder::new()
+                .links(s)
+                .filter(|l| *l.kind() == linkify::LinkKind::Url)
+                .collect();
+            assert_eq!(links.len(), 1);
+            let raw_link = links[0].as_str().to_string();
+            let mut confirmation_link = Url::parse(&raw_link).unwrap();
+
+            // Let's make sure random API on the web is not called
+            assert_eq!(confirmation_link.host_str().unwrap(), "127.0.0.1");
+            // Set the port - this is applicable for the test url only - for production url, no need for a port
+            confirmation_link.set_port(Some(self.port)).unwrap();
+            confirmation_link
+        };
+
+        let html = get_link(&body["HtmlBody"].as_str().unwrap());
+        let plain_text = get_link(&body["HtmlBody"].as_str().unwrap());
+
+        ConfirmationLinks {
+            html, plain_text
+        }
     }
 }
 
