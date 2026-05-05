@@ -1,12 +1,20 @@
 use crate::helpers::spawn_app;
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, ResponseTemplate};
 
 #[tokio::test]
 async fn subscribe_returns_a_200_for_valid_form_data() {
     let test_app = spawn_app().await;
-
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
-    let response = test_app.post_subscriptions(body.into()).await;
 
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&test_app.email_server)
+        .await;
+
+    let response = test_app.post_subscriptions(body.into()).await;
     assert_eq!(200, response.status());
 
     let saved = sqlx::query!("SELECT email, name FROM subscriptions",)
@@ -60,4 +68,21 @@ async fn subscribe_returns_a_400_when_data_is_missing() {
             error_msg
         );
     }
+}
+
+#[tokio::test]
+async fn subscribe_sends_a_confirmation_email_for_valid_data() {
+    // Arrange
+    let test_app = spawn_app().await;
+    let body = "name=mimi&email=mimi_pos%40gmail.com";
+
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&test_app.email_server)
+        .await;
+
+    // Act
+    test_app.post_subscriptions(body.into()).await;
 }
