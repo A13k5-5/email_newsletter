@@ -45,12 +45,14 @@ async fn the_link_returned_by_subscribe_returns_a_200_if_called() {
     };
 
     let raw_confirmation_link = &get_link(&body["HtmlBody"].as_str().unwrap());
-    let confirmation_link = Url::parse(raw_confirmation_link).unwrap();
+    let mut confirmation_link = Url::parse(raw_confirmation_link).unwrap();
 
     // Let's make sure random API on the web is not called
     assert_eq!(confirmation_link.host_str().unwrap(), "127.0.0.1");
+    // Set the port - this is applicable for the test url only - for production url, no need for a port
+    confirmation_link.set_port(Some(test_app.port)).unwrap();
 
-    // Act
+    // Act - use the confirmation link
     let response = reqwest::get(confirmation_link).await.unwrap();
 
     // Assert
