@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+curl --request POST --data 'name=mimi&email=mimi_pos%40gmail.com' \
+  https://alex-newsletter-xsrd7.ondigitalocean.app/subscriptions -v

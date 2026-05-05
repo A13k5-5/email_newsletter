@@ -11,6 +11,7 @@ services:
   http_port: 8000
   health_check:
     http_path: /health_check
+    period_seconds: 120
   instance_size_slug: basic-xxs
   instance_count: 1
   envs:
