@@ -207,12 +207,7 @@ mod tests {
 
         // Act
         let outcome = email_client
-            .send_email(
-                email(),
-                &crate::email_client::tests::subject(),
-                &crate::email_client::tests::content(),
-                &crate::email_client::tests::content(),
-            )
+            .send_email(email(), &subject(), &content(), &content())
             .await;
 
         // Assert
