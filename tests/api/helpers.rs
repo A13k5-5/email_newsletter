@@ -35,12 +35,6 @@ impl TestApp {
             .await
             .expect("Failed to execute request")
     }
-
-    pub async fn get_confirm(&self) -> Response {
-        reqwest::get(format!("{}/subscriptions/confirm", self.address))
-            .await
-            .expect("Failed to execute request")
-    }
 }
 
 /// Spin up an instance of the application server with address assigned by the OS.
