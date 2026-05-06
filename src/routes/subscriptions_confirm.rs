@@ -27,7 +27,7 @@ pub async fn confirm(
     // Database error might occur
     match confirm_subscriber(id, &db_pool).await {
         Ok(()) => HttpResponse::Ok().finish(),
-        Err(_) => HttpResponse::InternalServerError().finish()
+        Err(_) => HttpResponse::InternalServerError().finish(),
     }
 }
 
@@ -56,7 +56,7 @@ async fn get_subscriber_id_from_token(
     // If found or not found, return Ok - if found, unwrap the id from the record
     match result {
         Some(record) => Ok(Some(record.subscriber_id)),
-        None => Ok(None)
+        None => Ok(None),
     }
 }
 
