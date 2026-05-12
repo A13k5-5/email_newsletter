@@ -1,4 +1,3 @@
-use std::error::Error;
 use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
 use crate::email_client::EmailClient;
 use crate::startup::ApplicationBaseUrl;
@@ -6,6 +5,7 @@ use actix_web::{HttpResponse, ResponseError, web};
 use chrono::Utc;
 use rand::distr::{Alphanumeric, SampleString};
 use sqlx::{Executor, PgPool, Postgres, Transaction};
+use std::error::Error;
 use std::fmt::Formatter;
 use uuid::Uuid;
 
@@ -56,8 +56,7 @@ pub async fn subscribe(
 
     let subscription_token = generate_subscription_token();
     // store token
-    store_token(subscriber_id, &subscription_token, &mut transaction)
-        .await?;
+    store_token(subscriber_id, &subscription_token, &mut transaction).await?;
 
     if transaction.commit().await.is_err() {
         return Ok(HttpResponse::InternalServerError().finish());
@@ -174,7 +173,7 @@ impl std::error::Error for StoreTokenError {
 
 fn error_chain_fmt(
     e: &impl std::error::Error,
-    f: &mut std::fmt::Formatter<'_>
+    f: &mut std::fmt::Formatter<'_>,
 ) -> std::fmt::Result {
     writeln!(f, "{}\n", e)?;
     let mut current = e.source();
