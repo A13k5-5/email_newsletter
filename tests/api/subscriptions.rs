@@ -50,7 +50,7 @@ async fn subscribe_persists_the_new_subscriber() {
 }
 
 #[tokio::test]
-async fn subscribe_returns_a_200_when_fields_are_present_but_empty() {
+async fn subscribe_returns_a_400_when_fields_are_present_but_invalid() {
     let test_app = spawn_app().await;
     let test_cases = vec![
         ("name=&email=ursula_le_guin%40gmail.com", "empty name"),
