@@ -33,6 +33,81 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
     assert_eq!(response.status().as_u16(), 200);
 }
 
+#[tokio::test]
+async fn newsletters_are_delivered_to_confirmed_subscribers() {
+    // Arrange
+    let test_app = spawn_app().await;
+    create_confirmed_subscriber(&test_app).await;
+
+    Mock::given(any())
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&test_app.email_server)
+        .await;
+
+    let newsletter_request_body = serde_json::json!({
+        "title": "Newsletter title",
+        "content": {
+            "text": "Newsletter body as plain text.",
+            "html": "<p>Newsletter body as HTML</p>"
+        }
+    });
+
+    let response = reqwest::Client::new()
+        .post(&format!("{}/newsletters", &test_app.address))
+        .json(&newsletter_request_body)
+        .send()
+        .await
+        .expect("Failed to execute request.");
+
+    // Assert
+    assert_eq!(response.status().as_u16(), 200);
+    // Mock verifies on drop that we have sent the newsletter email
+}
+
+#[tokio::test]
+async fn newsletters_returns_400_for_invalid_data() {
+    // Arrange
+    let test_app = spawn_app().await;
+
+    let test_cases = vec![
+        (
+            serde_json::json!({
+                "content": {
+                    "text": "Newsletter body as plain text.",
+                    "html": "<p>Newsletter body as HTML</p>"
+                }}
+            ),
+            "missing title",
+        ),
+        (
+            serde_json::json!({
+                "title": "Newsletter title",
+            }
+             ),
+            "missing content",
+        ),
+    ];
+
+    for (invalid_body, error_msg) in test_cases {
+        // Act
+        let response = reqwest::Client::new()
+            .post(&format!("{}/newsletters", &test_app.address))
+            .json(&invalid_body)
+            .send()
+            .await
+            .expect("Failed to execute request.");
+
+        // Assert
+        assert_eq!(
+            400,
+            response.status().as_u16(),
+            "The API did not fail with 400 Bad Request when the payload was {}.",
+            error_msg
+        )
+    }
+}
+
 async fn create_confirmed_subscriber(app: &TestApp) {
     let confirmation_link = create_unconfirmed_subscriber(app).await;
     reqwest::get(confirmation_link.html)
