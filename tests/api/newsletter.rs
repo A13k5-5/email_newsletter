@@ -22,12 +22,8 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
         }
     });
 
-    let response = reqwest::Client::new()
-        .post(&format!("{}/newsletters", &test_app.address))
-        .json(&newsletter_request_body)
-        .send()
-        .await
-        .expect("Failed to execute request.");
+    // Act
+    let response = test_app.post_newsletters(newsletter_request_body).await;
 
     // Assert
     assert_eq!(response.status().as_u16(), 200);
@@ -53,12 +49,8 @@ async fn newsletters_are_delivered_to_confirmed_subscribers() {
         }
     });
 
-    let response = reqwest::Client::new()
-        .post(&format!("{}/newsletters", &test_app.address))
-        .json(&newsletter_request_body)
-        .send()
-        .await
-        .expect("Failed to execute request.");
+    // Act
+    let response = test_app.post_newsletters(newsletter_request_body).await;
 
     // Assert
     assert_eq!(response.status().as_u16(), 200);
@@ -91,12 +83,7 @@ async fn newsletters_returns_400_for_invalid_data() {
 
     for (invalid_body, error_msg) in test_cases {
         // Act
-        let response = reqwest::Client::new()
-            .post(&format!("{}/newsletters", &test_app.address))
-            .json(&invalid_body)
-            .send()
-            .await
-            .expect("Failed to execute request.");
+        let response = test_app.post_newsletters(invalid_body).await;
 
         // Assert
         assert_eq!(
@@ -109,7 +96,10 @@ async fn newsletters_returns_400_for_invalid_data() {
 }
 
 async fn create_confirmed_subscriber(app: &TestApp) {
+    // First create unconfirmed
     let confirmation_link = create_unconfirmed_subscriber(app).await;
+
+    // Then 'click' the link to confirm the subscriber
     reqwest::get(confirmation_link.html)
         .await
         .unwrap()
