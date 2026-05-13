@@ -47,7 +47,7 @@ impl TestApp {
     pub fn get_confirmation_links(&self, email_request: &wiremock::Request) -> ConfirmationLinks {
         // Parse the body as JSON, starting from raw bytes
         let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
-        // Extract the link from one of the request fields
+        // Extract the link from one of the request fields using linkify
         let get_link = |s: &str| {
             let links: Vec<_> = linkify::LinkFinder::new()
                 .links(s)
