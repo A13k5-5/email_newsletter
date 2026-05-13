@@ -169,7 +169,7 @@ async fn store_token(
     transaction
         .execute(query)
         .await
-        .map_err(|e| StoreTokenError(e))?;
+        .map_err(StoreTokenError)?;
     Ok(())
 }
 
