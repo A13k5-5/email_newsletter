@@ -1,15 +1,15 @@
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
 use crate::routes::error_chain_fmt;
-use actix_web::http::{header, StatusCode};
+use actix_web::body::BoxBody;
 use actix_web::http::header::{HeaderMap, HeaderValue};
+use actix_web::http::{StatusCode, header};
 use actix_web::{HttpRequest, HttpResponse, ResponseError, web};
 use anyhow::Context;
 use base64::Engine;
-use secrecy::SecretString;
+use secrecy::{ExposeSecret, SecretString};
 use sqlx::PgPool;
 use std::fmt::{Debug, Formatter};
-use actix_web::body::BoxBody;
 
 pub async fn publish_newsletter(
     pool: web::Data<PgPool>,
@@ -17,7 +17,8 @@ pub async fn publish_newsletter(
     email_client: web::Data<EmailClient>,
     request: HttpRequest,
 ) -> Result<HttpResponse, PublishError> {
-    let _credentials = basic_authentication(request.headers()).map_err(PublishError::AuthError)?;
+    let credentials = basic_authentication(request.headers()).map_err(PublishError::AuthError)?;
+    validate_password(credentials, &pool).await?;
 
     let subscribers = get_confirmed_subscribers(&pool).await?;
     for subscriber in subscribers {
@@ -110,11 +111,13 @@ impl ResponseError for PublishError {
         match self {
             PublishError::UnexpectedError(_) => {
                 HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
-            },
+            }
             PublishError::AuthError(_) => {
                 let mut response = HttpResponse::new(StatusCode::UNAUTHORIZED);
                 let header_value = HeaderValue::from_str(r#"Basic realm="publish""#).unwrap();
-                response.headers_mut().insert(header::WWW_AUTHENTICATE, header_value);
+                response
+                    .headers_mut()
+                    .insert(header::WWW_AUTHENTICATE, header_value);
                 response
             }
         }
@@ -159,4 +162,27 @@ fn basic_authentication(headers: &HeaderMap) -> Result<Credentials, anyhow::Erro
         username,
         password: SecretString::from(password),
     })
+}
+
+async fn validate_password(
+    credentials: Credentials,
+    db_pool: &PgPool,
+) -> Result<uuid::Uuid, PublishError> {
+    let user_id = sqlx::query!(
+        r#"
+        SELECT user_id FROM users
+                   WHERE username = $1 AND password = $2
+        "#,
+        credentials.username,
+        credentials.password.expose_secret()
+    )
+    .fetch_optional(db_pool)
+    .await
+    .context("Failed to perform a query to validate auth credentials.")
+    .map_err(PublishError::UnexpectedError)?;
+
+    user_id
+        .map(|row| row.user_id)
+        .ok_or_else(|| anyhow::anyhow!("Invalid username or password."))
+        .map_err(PublishError::AuthError)
 }
