@@ -33,6 +33,7 @@ tokio = { version = "1.52.1", features = ["macros", "rt-multi-thread"] }
 rand = { version = "0.10.1", features = ["std_rng"] }
 thiserror = "2.0.18"
 anyhow = "1.0.102"
+base64 = "0.22.1"
 
 [dev-dependencies]
 claims = "0.8.0"
