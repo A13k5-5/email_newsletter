@@ -44,11 +44,11 @@ impl TestApp {
     }
 
     pub async fn post_newsletters(&self, body: serde_json::Value) -> Response {
+        let (username, password) = self.test_user().await;
         reqwest::Client::new()
             .post(&format!("{}/newsletters", self.address))
+            .basic_auth(username, Some(password))
             .json(&body)
-            // Random credentials
-            .basic_auth(Uuid::new_v4().to_string(), Some(Uuid::new_v4().to_string()))
             .send()
             .await
             .expect("Failed to execute request.")
@@ -80,6 +80,19 @@ impl TestApp {
 
         ConfirmationLinks { html, plain_text }
     }
+
+    /// Returns in form (username, password)
+    pub async fn test_user(&self) -> (String, String) {
+        let test_user = sqlx::query!(
+            r#"
+            SELECT username, password FROM users LIMIT 1
+            "#
+        )
+        .fetch_one(&self.db_pool)
+        .await
+        .expect("Failed to create test user.");
+        (test_user.username, test_user.password)
+    }
 }
 
 /// Spin up an instance of the application server with address assigned by the OS.
@@ -110,12 +123,15 @@ pub async fn spawn_app() -> TestApp {
     let application_port = application.port();
     let _ = tokio::spawn(application.run_until_stopped());
 
-    TestApp {
+    let test_app = TestApp {
         port: application_port,
         address: format!("http://localhost:{}", application_port),
         db_pool: get_connection_pool(&configuration.database),
         email_server,
-    }
+    };
+    // Add the test user - only necessary for test purposes
+    add_test_user(&test_app.db_pool).await;
+    test_app
 }
 
 async fn configure_database(config: &DatabaseSettings) -> PgPool {
@@ -138,4 +154,19 @@ async fn configure_database(config: &DatabaseSettings) -> PgPool {
         .await
         .expect("Failed to migrate the database");
     db_pool
+}
+
+/// Currently this method is a raw SQL query
+async fn add_test_user(pool: &PgPool) {
+    sqlx::query!(
+        r#"
+        INSERT INTO users (user_id, username, password) VALUES ($1, $2, $3)
+        "#,
+        Uuid::new_v4(),
+        Uuid::new_v4().to_string(),
+        Uuid::new_v4().to_string(),
+    )
+    .execute(pool)
+    .await
+    .expect("Failed to create test user.");
 }
