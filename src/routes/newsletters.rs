@@ -8,6 +8,7 @@ use actix_web::{HttpRequest, HttpResponse, ResponseError, web};
 use anyhow::Context;
 use base64::Engine;
 use secrecy::{ExposeSecret, SecretString};
+use sha3::Digest;
 use sqlx::PgPool;
 use std::fmt::{Debug, Formatter};
 
@@ -175,13 +176,15 @@ async fn validate_password(
     credentials: Credentials,
     db_pool: &PgPool,
 ) -> Result<uuid::Uuid, PublishError> {
+    let password_hash = sha3::Sha3_256::digest(&credentials.password.expose_secret());
+    let password_hash = format!("{:?}", password_hash);
     let user_id = sqlx::query!(
         r#"
         SELECT user_id FROM users
-                   WHERE username = $1 AND password = $2
+                   WHERE username = $1 AND password_hash = $2
         "#,
         credentials.username,
-        credentials.password.expose_secret()
+        password_hash
     )
     .fetch_optional(db_pool)
     .await
