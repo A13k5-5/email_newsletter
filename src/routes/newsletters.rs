@@ -11,6 +11,7 @@ use base64::Engine;
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::PgPool;
 use std::fmt::{Debug, Formatter};
+use crate::telemetry::spawn_blocking_with_tracing;
 
 #[tracing::instrument(
     name = "Publish a newsletter issue",
@@ -25,7 +26,7 @@ pub async fn publish_newsletter(
 ) -> Result<HttpResponse, PublishError> {
     let credentials = basic_authentication(request.headers()).map_err(PublishError::AuthError)?;
     tracing::Span::current().record("username", &tracing::field::display(&credentials.username));
-    let user_id = validate_password(credentials, &pool).await?;
+    let user_id = validate_credentials(credentials, &pool).await?;
     tracing::Span::current().record("user_id", &tracing::field::display(&user_id));
 
     let subscribers = get_confirmed_subscribers(&pool).await?;
@@ -173,7 +174,7 @@ fn basic_authentication(headers: &HeaderMap) -> Result<Credentials, anyhow::Erro
 }
 
 #[tracing::instrument(name = "Validate credentials", skip(credentials, db_pool))]
-async fn validate_password(
+async fn validate_credentials(
     credentials: Credentials,
     db_pool: &PgPool,
 ) -> Result<uuid::Uuid, PublishError> {
@@ -182,7 +183,7 @@ async fn validate_password(
         .map_err(PublishError::UnexpectedError)?
         .ok_or_else(|| PublishError::AuthError(anyhow::anyhow!("Uknown username.")))?;
 
-    tokio::task::spawn_blocking(move || {
+    spawn_blocking_with_tracing(move || {
         verify_password_hash(expected_password_hash, credentials.password)
     })
     .await
