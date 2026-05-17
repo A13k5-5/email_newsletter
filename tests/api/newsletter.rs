@@ -1,5 +1,5 @@
-use uuid::Uuid;
 use crate::helpers::{ConfirmationLinks, TestApp, spawn_app};
+use uuid::Uuid;
 use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
