@@ -1,6 +1,8 @@
+use argon2::{Argon2, PasswordHasher};
+use argon2::password_hash::rand_core::OsRng;
+use argon2::password_hash::SaltString;
 use once_cell::sync::Lazy;
 use reqwest::{Response, Url};
-use sha3::Digest;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use wiremock::MockServer;
@@ -37,8 +39,10 @@ impl TestUser {
 
     /// Uses a raw SQL query
     async fn store(&self, db_pool: &PgPool) {
-        let password_hash = sha3::Sha3_256::digest(&self.password);
-        let password_hash = format!("{:?}", password_hash);
+        let salt = SaltString::generate(&mut OsRng);
+        let password_hash = Argon2::default().hash_password(
+            self.password.as_bytes(), salt.as_salt()
+        ).unwrap().to_string();
 
         sqlx::query!(
             r#"
