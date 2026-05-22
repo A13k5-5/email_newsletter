@@ -1,11 +1,11 @@
 use crate::authentication::{AuthError, Credentials, validate_credentials};
 use crate::routes::error_chain_fmt;
+use actix_web::cookie::Cookie;
 use actix_web::error::InternalError;
 use actix_web::{HttpResponse, web};
 use secrecy::SecretString;
 use sqlx::PgPool;
 use std::fmt::{Debug, Formatter};
-use actix_web::cookie::Cookie;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
