@@ -4,9 +4,11 @@ use crate::email_client::EmailClient;
 use actix_web::dev::Server;
 use actix_web::web::Data;
 use actix_web::{App, HttpServer, web};
-use secrecy::SecretString;
+use secrecy::{ExposeSecret, SecretString};
 use sqlx::PgPool;
 use std::net::TcpListener;
+use actix_web_flash_messages::FlashMessagesFramework;
+use actix_web_flash_messages::storage::CookieMessageStore;
 use tracing_actix_web::TracingLogger;
 
 pub struct Application {
@@ -73,8 +75,11 @@ pub fn run(
     let db_pool = Data::new(db_pool);
     let email_client = Data::new(email_client);
     let base_url = Data::new(ApplicationBaseUrl(base_url));
+    let message_store = CookieMessageStore::builder(actix_web::cookie::Key::from(hmac_secret.expose_secret().as_bytes())).build();
+    let message_framework = FlashMessagesFramework::builder(message_store).build();
     let server = HttpServer::new(move || {
         App::new()
+            .wrap(message_framework.clone())
             .wrap(TracingLogger::default())
             .route("/", web::get().to(routes::home))
             .route("/login", web::get().to(routes::login_form))
