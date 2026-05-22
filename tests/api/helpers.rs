@@ -94,6 +94,19 @@ impl TestApp {
             .expect("Failed to execute request.")
     }
 
+    pub async fn post_login(&self, body: &serde_json::Value) -> Response {
+        reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .unwrap()
+            .post(&format!("{}/login", &self.address))
+            // the body is URL-encoded and the `Content-Type` header is set accordingly
+            .form(&body)
+            .send()
+            .await
+            .expect("Failed to execute request")
+    }
+
     /// Extract the confirmation links embedded in the request to the email API
     pub fn get_confirmation_links(&self, email_request: &wiremock::Request) -> ConfirmationLinks {
         // Parse the body as JSON, starting from raw bytes
@@ -181,4 +194,9 @@ async fn configure_database(config: &DatabaseSettings) -> PgPool {
         .await
         .expect("Failed to migrate the database");
     db_pool
+}
+
+pub fn assert_is_redirect_to(response: &Response, location: &str) {
+    assert_eq!(response.status().as_u16(), 303);
+    assert_eq!(response.headers().get("Location").unwrap(), location);
 }
