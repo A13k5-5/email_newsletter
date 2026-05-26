@@ -1,17 +1,17 @@
 use super::routes;
 use crate::configuration::{DatabaseSettings, Settings};
 use crate::email_client::EmailClient;
-use actix_web::dev::Server;
-use actix_web::web::Data;
-use actix_web::{App, HttpServer, web};
-use secrecy::{ExposeSecret, SecretString};
-use sqlx::PgPool;
-use std::net::TcpListener;
 use actix_session::SessionMiddleware;
 use actix_session::storage::RedisSessionStore;
 use actix_web::cookie::Key;
+use actix_web::dev::Server;
+use actix_web::web::Data;
+use actix_web::{App, HttpServer, web};
 use actix_web_flash_messages::FlashMessagesFramework;
 use actix_web_flash_messages::storage::CookieMessageStore;
+use secrecy::{ExposeSecret, SecretString};
+use sqlx::PgPool;
+use std::net::TcpListener;
 use tracing_actix_web::TracingLogger;
 
 pub struct Application {
@@ -48,8 +48,9 @@ impl Application {
             email_client,
             configuration.application.base_url,
             configuration.application.hmac_secret,
-            configuration.redis_uri
-        ).await?;
+            configuration.redis_uri,
+        )
+        .await?;
         Ok(Self { port, server })
     }
 
@@ -75,7 +76,7 @@ async fn run(
     email_client: EmailClient,
     base_url: String,
     hmac_secret: SecretString,
-    redis_uri: SecretString
+    redis_uri: SecretString,
 ) -> Result<Server, anyhow::Error> {
     let db_pool = Data::new(db_pool);
     let email_client = Data::new(email_client);
@@ -87,9 +88,13 @@ async fn run(
     let server = HttpServer::new(move || {
         App::new()
             .wrap(message_framework.clone())
-            .wrap(SessionMiddleware::new(redis_store.clone(), secret_key.clone()))
+            .wrap(SessionMiddleware::new(
+                redis_store.clone(),
+                secret_key.clone(),
+            ))
             .wrap(TracingLogger::default())
             .route("/", web::get().to(routes::home))
+            .route("/admin/dashboard", web::get().to(routes::admin_dashboard))
             .route("/login", web::get().to(routes::login_form))
             .route("/login", web::post().to(routes::login))
             .route("/health_check", web::get().to(routes::health_check))
