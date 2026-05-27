@@ -94,3 +94,35 @@ async fn current_password_must_be_valid() {
         "<p><i>The current password is incorrect.</i></p>",
     ));
 }
+
+#[tokio::test]
+async fn new_password_must_in_the_length_range() {
+    // Arrange
+    let test_app = spawn_app().await;
+    let passwords = ["a".repeat(12), "a".repeat(129)];
+
+    // Act - part 1 - login
+    test_app.post_login(&serde_json::json!({
+            "username": &test_app.test_user.username,
+            "password": &test_app.test_user.password,
+        }))
+        .await;
+
+    for new_password in passwords {
+        // Act - part 2 - change password
+        let response = test_app
+            .post_change_password(&serde_json::json!({
+                "current_password": &test_app.test_user.password,
+                "new_password": &new_password,
+                "new_password_check": &new_password,
+            }))
+            .await;
+        assert_is_redirect_to(&response, "/admin/password");
+
+        // Act - part 3 - follow the redirect
+        let html_page = test_app.get_change_password_html().await;
+        assert!(html_page.contains(
+            "<p><i>The new password must be longer than 12 and shorter than 129 characters.</i></p>",
+        ));
+    }
+}
