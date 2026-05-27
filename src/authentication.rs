@@ -23,6 +23,7 @@ pub async fn validate_credentials(
     db_pool: &PgPool,
 ) -> Result<uuid::Uuid, AuthError> {
     let mut user_id = None;
+    // We need to use a constant time comparison algorithm to prevent timing attacks, even if the user doesn't exist. Hence, a default password hash.
     let mut expected_password_hash = SecretString::new(
         "$argon2id$v=19$m=15000,t=2,p=1$\
         gZiV/M1gPc22ElAH/Jh1Hw$\

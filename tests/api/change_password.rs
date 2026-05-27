@@ -63,3 +63,34 @@ async fn new_password_fields_must_match() {
         "<p><i>You entered two different new passwords - the field values must match.</i></p>",
     ));
 }
+
+#[tokio::test]
+async fn current_password_must_be_valid() {
+    // Arrange
+    let test_app = spawn_app().await;
+    let new_password = Uuid::new_v4().to_string();
+
+    // Act - part 1 - login
+    test_app
+        .post_login(&serde_json::json!({
+            "username": &test_app.test_user.username,
+            "password": &test_app.test_user.password,
+        }))
+        .await;
+
+    // Act - part 2 - change password
+    let response = test_app
+        .post_change_password(&serde_json::json!({
+            "current_password": Uuid::new_v4().to_string(), // invalid current password
+            "new_password": &new_password,
+            "new_password_check": &new_password,
+        }))
+        .await;
+    assert_is_redirect_to(&response, "/admin/password");
+
+    // Act - part 3 - follow the redirect
+    let html_page = test_app.get_change_password_html().await;
+    assert!(html_page.contains(
+        "<p><i>The current password is incorrect.</i></p>",
+    ));
+}
