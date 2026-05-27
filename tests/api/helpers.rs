@@ -137,8 +137,11 @@ impl TestApp {
             .expect("Failed to execute request")
     }
 
-    pub async fn post_change_password(&self, body: &serde_json::Value) -> Response
-    {
+    pub async fn get_change_password_html(&self) -> String {
+        self.get_change_password().await.text().await.unwrap()
+    }
+
+    pub async fn post_change_password(&self, body: &serde_json::Value) -> Response {
         self.api_client
             .post(&format!("{}/admin/password", &self.address))
             .form(&body)
