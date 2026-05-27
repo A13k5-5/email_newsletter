@@ -1,7 +1,7 @@
-use std::future::{ready, Ready};
 use actix_session::{Session, SessionExt, SessionGetError, SessionInsertError};
-use actix_web::{FromRequest, HttpRequest};
 use actix_web::dev::Payload;
+use actix_web::{FromRequest, HttpRequest};
+use std::future::{Ready, ready};
 
 pub struct TypedSession(Session);
 
@@ -13,8 +13,7 @@ impl TypedSession {
     }
 
     pub fn insert_user_id(&self, user_id: uuid::Uuid) -> Result<(), SessionInsertError> {
-        self.0
-            .insert(Self::USER_ID_KEY, user_id)
+        self.0.insert(Self::USER_ID_KEY, user_id)
     }
 
     pub fn get_user_id(&self) -> Result<Option<uuid::Uuid>, SessionGetError> {

@@ -116,15 +116,16 @@ impl TestApp {
             .unwrap()
     }
 
-    pub async fn get_admin_dashboard_html(&self) -> String {
+    pub async fn get_admin_dashboard(&self) -> Response {
         self.api_client
             .get(&format!("{}/admin/dashboard", &self.address))
             .send()
             .await
             .expect("Failed to execute request.")
-            .text()
-            .await
-            .unwrap()
+    }
+
+    pub async fn get_admin_dashboard_html(&self) -> String {
+        self.get_admin_dashboard().await.text().await.unwrap()
     }
 
     /// Extract the confirmation links embedded in the request to the email API using linkify
