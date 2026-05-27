@@ -1,9 +1,9 @@
-use actix_session::Session;
 use actix_web::http::header::ContentType;
 use actix_web::{HttpResponse, web};
 use anyhow::Context;
 use sqlx::PgPool;
 use uuid::Uuid;
+use crate::session_state::TypedSession;
 
 /// Return an opaque 500 while preserving the error's root cause for logging
 fn e500<T>(e: T) -> actix_web::Error
@@ -14,15 +14,16 @@ where
 }
 
 pub async fn admin_dashboard(
-    session: Session,
+    session: TypedSession,
     db_pool: web::Data<PgPool>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let username = if let Some(user_id) = session.get::<Uuid>("user_id").map_err(e500)? {
+    let username = if let Some(user_id) = session.get_user_id().map_err(e500)? {
         get_username(user_id, &db_pool).await.map_err(e500)?
     } else {
-        return Ok(HttpResponse::SeeOther()
-            .insert_header(("LOCATION", "/login"))
-            .finish());
+        todo!()
+        // return Ok(HttpResponse::SeeOther()
+        //     .insert_header(("LOCATION", "/login"))
+        //     .finish());
     };
     Ok(HttpResponse::Ok()
         .content_type(ContentType::html())
