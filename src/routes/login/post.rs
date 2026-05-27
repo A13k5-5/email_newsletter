@@ -7,6 +7,7 @@ use actix_web_flash_messages::FlashMessage;
 use secrecy::SecretString;
 use sqlx::PgPool;
 use std::fmt::{Debug, Formatter};
+use crate::utils::see_other;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
@@ -36,9 +37,7 @@ pub async fn login(
             session
                 .insert_user_id(user_id)
                 .map_err(|e| login_redirect(LoginError::UnexpectedError(e.into())))?;
-            Ok(HttpResponse::SeeOther()
-                .insert_header(("LOCATION", "/admin/dashboard"))
-                .finish())
+            Ok(see_other("/admin/dashboard"))
         }
         Err(e) => {
             let e = match e {

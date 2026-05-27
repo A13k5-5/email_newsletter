@@ -129,6 +129,24 @@ impl TestApp {
         self.get_admin_dashboard().await.text().await.unwrap()
     }
 
+    pub async fn get_change_password(&self) -> Response {
+        self.api_client
+            .get(&format!("{}/admin/password", &self.address))
+            .send()
+            .await
+            .expect("Failed to execute request")
+    }
+
+    pub async fn post_change_password(&self, body: &serde_json::Value) -> Response
+    {
+        self.api_client
+            .post(&format!("{}/admin/password", &self.address))
+            .form(&body)
+            .send()
+            .await
+            .expect("Failed to execute request")
+    }
+
     /// Extract the confirmation links embedded in the request to the email API using linkify
     pub fn get_confirmation_links(&self, email_request: &wiremock::Request) -> ConfirmationLinks {
         // Parse the body as JSON, starting from raw bytes
