@@ -33,7 +33,8 @@ impl TestUser {
         Self {
             user_id: Uuid::new_v4(),
             username: Uuid::new_v4().to_string(),
-            password: Uuid::new_v4().to_string(),
+            // password: Uuid::new_v4().to_string(),
+            password: "password".into(),
         }
     }
 
