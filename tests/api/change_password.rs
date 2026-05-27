@@ -90,9 +90,7 @@ async fn current_password_must_be_valid() {
 
     // Act - part 3 - follow the redirect
     let html_page = test_app.get_change_password_html().await;
-    assert!(html_page.contains(
-        "<p><i>The current password is incorrect.</i></p>",
-    ));
+    assert!(html_page.contains("<p><i>The current password is incorrect.</i></p>",));
 }
 
 #[tokio::test]
@@ -102,7 +100,8 @@ async fn new_password_must_in_the_length_range() {
     let passwords = ["a".repeat(12), "a".repeat(129)];
 
     // Act - part 1 - login
-    test_app.post_login(&serde_json::json!({
+    test_app
+        .post_login(&serde_json::json!({
             "username": &test_app.test_user.username,
             "password": &test_app.test_user.password,
         }))

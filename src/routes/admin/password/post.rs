@@ -1,10 +1,10 @@
+use crate::authentication::{AuthError, Credentials, validate_credentials};
+use crate::routes::admin::dashboard::get_username;
 use crate::session_state::TypedSession;
 use crate::utils::{e500, see_other};
 use actix_web::{HttpResponse, web};
 use actix_web_flash_messages::FlashMessage;
 use secrecy::{ExposeSecret, SecretString};
-use crate::authentication::{validate_credentials, AuthError, Credentials};
-use crate::routes::admin::dashboard::get_username;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
@@ -33,7 +33,7 @@ pub async fn change_password(
     let username = get_username(user_id, &db_pool).await.map_err(e500)?;
     let credentials = Credentials {
         username,
-        password: form.0.current_password.clone()
+        password: form.0.current_password.clone(),
     };
     if let Err(e) = validate_credentials(credentials, &db_pool).await {
         return match e {
@@ -42,15 +42,17 @@ pub async fn change_password(
                 return Ok(see_other("/admin/password"));
             }
             AuthError::UnexpectedError(_) => Err(e500(e)),
-        }
+        };
     }
     let password_length = form.new_password.expose_secret().len();
     if password_length <= 12 || password_length >= 128 {
-        FlashMessage::error("The new password must be longer than 12 and shorter than 129 characters.").send();
+        FlashMessage::error(
+            "The new password must be longer than 12 and shorter than 129 characters.",
+        )
+        .send();
         return Ok(see_other("/admin/password"));
     }
     todo!()
-
 }
 
 async fn check_current_password() -> Result<(), actix_web::Error> {
