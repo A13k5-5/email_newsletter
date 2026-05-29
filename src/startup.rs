@@ -5,7 +5,7 @@ use actix_session::SessionMiddleware;
 use actix_session::storage::RedisSessionStore;
 use actix_web::cookie::Key;
 use actix_web::dev::Server;
-use actix_web::web::Data;
+use actix_web::web::{route, Data};
 use actix_web::{App, HttpServer, web};
 use actix_web_flash_messages::FlashMessagesFramework;
 use actix_web_flash_messages::storage::CookieMessageStore;
@@ -102,7 +102,8 @@ async fn run(
                     .route("/dashboard", web::get().to(routes::admin_dashboard))
                     .route("/password", web::get().to(routes::change_password_form))
                     .route("/password", web::post().to(routes::change_password))
-                    .route("/logout", web::post().to(routes::log_out)),
+                    .route("/logout", web::post().to(routes::log_out))
+                    .route("/newsletters", web::get().to(routes::publish_newsletter_form))
             )
             .route("/login", web::get().to(routes::login_form))
             .route("/login", web::post().to(routes::login))

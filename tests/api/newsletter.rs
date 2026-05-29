@@ -1,7 +1,32 @@
-use crate::helpers::{ConfirmationLinks, TestApp, spawn_app};
+use crate::helpers::{ConfirmationLinks, TestApp, spawn_app, assert_is_redirect_to};
 use uuid::Uuid;
 use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
+
+#[tokio::test]
+async fn you_must_be_logged_in_to_access_the_publish_newsletter_form() {
+    // Arrange - with no login
+    let test_app = spawn_app().await;
+
+    // Act
+    let response = test_app.get_publish_newsletter().await;
+
+    // Assert
+    assert_is_redirect_to(&response, "/login");
+}
+
+#[tokio::test]
+async fn logged_in_user_can_access_the_publish_newsletter_form() {
+    // Arrange
+    let test_app = spawn_app().await;
+    test_app.login_as_test_user().await;
+
+    // Act
+    let response = test_app.get_publish_newsletter().await;
+
+    // Assert
+    assert_eq!(200, response.status().as_u16());
+}
 
 #[tokio::test]
 async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
@@ -92,28 +117,29 @@ async fn newsletters_returns_400_for_invalid_data() {
 }
 
 #[tokio::test]
-async fn requests_missing_authorization_are_rejected() {
+async fn non_logged_in_user_cannot_publish() {
     // Arrange
     let test_app = spawn_app().await;
 
-    // Act
+    let body = serde_json::json!({
+        "title": "Newsletter title",
+        "text_content": "Newsletter body as plain text.",
+        "html_content": "<p>Newsletter body as HTML</p>"
+    });
+
+    // Act - part 1 - without authentication
     let response = reqwest::Client::new()
         .post(&format!("{}/newsletters", test_app.address))
-        .form(&serde_json::json!({
-            "title": "Newsletter title",
-            "text_content": "Newsletter body as plain text.",
-            "html_content": "<p>Newsletter body as HTML</p>"
-        }))
+        .form(&body)
         .send()
         .await
         .expect("Failed to execute request.");
 
-    // Assert
-    assert_eq!(401, response.status().as_u16());
-    assert_eq!(
-        r#"Basic realm="publish""#,
-        response.headers()["WWW-Authenticate"]
-    );
+    assert_is_redirect_to(&response, "/login");
+
+    // Act - part 2 - follow the redirect
+    let html_page = test_app.get_login_html().await;
+    assert!(html_page.contains(r#"<p><i>You must be logged in to publish</i></p>"#));
 }
 
 #[tokio::test]
