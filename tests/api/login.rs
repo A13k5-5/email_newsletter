@@ -30,11 +30,7 @@ async fn redirect_to_admin_dashboard_after_successful_login() {
     let test_app = spawn_app().await;
 
     // Act - part 1 - login
-    let login_body = serde_json::json!({
-        "username": &test_app.test_user.username,
-        "password": &test_app.test_user.password
-    });
-    let response = test_app.post_login(&login_body).await;
+    let response = test_app.login_as_test_user().await;
     assert_is_redirect_to(&response, "/admin/dashboard");
 
     // Act - part 2 - follow the redirect

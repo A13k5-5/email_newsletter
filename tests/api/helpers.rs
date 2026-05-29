@@ -106,6 +106,14 @@ impl TestApp {
             .expect("Failed to execute request")
     }
 
+    pub async fn login_as_test_user(&self) -> Response {
+        self.post_login(&serde_json::json!({
+            "username": &self.test_user.username,
+            "password": &self.test_user.password,
+        }))
+        .await
+    }
+
     pub async fn get_login_html(&self) -> String {
         self.api_client
             .get(&format!("{}/login", &self.address))

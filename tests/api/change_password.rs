@@ -39,12 +39,7 @@ async fn new_password_fields_must_match() {
     let new_password = Uuid::new_v4().to_string();
 
     // Act - part 1 - login
-    test_app
-        .post_login(&serde_json::json!({
-            "username": &test_app.test_user.username,
-            "password": &test_app.test_user.password,
-        }))
-        .await;
+    test_app.login_as_test_user().await;
 
     // Act - part 2 - change password
     let response = test_app
@@ -71,12 +66,7 @@ async fn current_password_must_be_valid() {
     let new_password = Uuid::new_v4().to_string();
 
     // Act - part 1 - login
-    test_app
-        .post_login(&serde_json::json!({
-            "username": &test_app.test_user.username,
-            "password": &test_app.test_user.password,
-        }))
-        .await;
+    test_app.login_as_test_user().await;
 
     // Act - part 2 - change password
     let response = test_app
@@ -100,12 +90,7 @@ async fn new_password_must_be_in_the_length_range() {
     let passwords = ["a".repeat(12), "a".repeat(129)];
 
     // Act - part 1 - login
-    test_app
-        .post_login(&serde_json::json!({
-            "username": &test_app.test_user.username,
-            "password": &test_app.test_user.password,
-        }))
-        .await;
+    test_app.login_as_test_user().await;
 
     for new_password in passwords {
         // Act - part 2 - change password
@@ -133,12 +118,7 @@ async fn changing_password_works() {
     let new_password = Uuid::new_v4().to_string();
 
     // Act - part 1 - login
-    test_app
-        .post_login(&serde_json::json!({
-            "username": &test_app.test_user.username,
-            "password": &test_app.test_user.password,
-        }))
-        .await;
+    test_app.login_as_test_user().await;
 
     // Act - part 2 - change password
     let response = test_app
