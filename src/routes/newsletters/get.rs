@@ -21,14 +21,17 @@ pub async fn publish_newsletter_form(flash_messages: IncomingFlashMessages) -> H
             <form action="/newsletters" method="post">
                 <label>Title
                     <input type="text" name="title">
+                    <placeholder="Title of the newsletter issue"></input>
                 </label>
                 <br>
                 <label>HTML content
                     <textarea name="html_content"></textarea>
+                    <placeholder="HTML content of the newsletter issue"></textarea>
                 </label>
                 <br>
                 <label>Text content
                     <textarea name="text_content"></textarea>
+                    <placeholder="Text content of the newsletter issue"></textarea>
                 </label>
                 <br>
                 <button type="submit">Publish</button>
