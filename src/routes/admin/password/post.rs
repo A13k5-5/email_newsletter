@@ -35,6 +35,7 @@ pub async fn change_password(
         username,
         password: form.0.current_password.clone(),
     };
+    // Check if current password is correct
     if let Err(e) = validate_credentials(credentials, &db_pool).await {
         return match e {
             AuthError::InvalidCredentials(_) => {
@@ -44,17 +45,24 @@ pub async fn change_password(
             AuthError::UnexpectedError(_) => Err(e500(e)),
         };
     }
+    // Check if new password is in the allowed length range (> 12 and < 129 characters)
     let password_length = form.new_password.expose_secret().len();
-    if password_length <= 12 || password_length >= 128 {
+    if password_length <= 12 || password_length >= 129 {
         FlashMessage::error(
             "The new password must be longer than 12 and shorter than 129 characters.",
         )
         .send();
         return Ok(see_other("/admin/password"));
     }
-    todo!()
+    
+    crate::authentication::change_password(&db_pool, user_id, form.new_password.clone())
+        .await
+        .map_err(e500)?;
+    FlashMessage::info("Your password has been changed.").send();
+    Ok(see_other("/admin/password"))
 }
 
-async fn check_current_password() -> Result<(), actix_web::Error> {
+/// TODO: For refactoring
+async fn _check_current_password() -> Result<(), actix_web::Error> {
     todo!()
 }
