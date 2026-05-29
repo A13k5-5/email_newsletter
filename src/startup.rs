@@ -12,7 +12,9 @@ use actix_web_flash_messages::storage::CookieMessageStore;
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::PgPool;
 use std::net::TcpListener;
+use actix_web::middleware::from_fn;
 use tracing_actix_web::TracingLogger;
+use crate::authentication::middleware::reject_anonymous_users;
 
 pub struct Application {
     port: u16,
@@ -94,13 +96,14 @@ async fn run(
             ))
             .wrap(TracingLogger::default())
             .route("/", web::get().to(routes::home))
-            .route("/admin/dashboard", web::get().to(routes::admin_dashboard))
-            .route(
-                "/admin/password",
-                web::get().to(routes::change_password_form),
+            .service(
+                web::scope("/admin")
+                    .wrap(from_fn(reject_anonymous_users))
+                    .route("/dashboard", web::get().to(routes::admin_dashboard))
+                    .route("/password", web::get().to(routes::change_password_form))
+                    .route("/password", web::post().to(routes::change_password))
+                    .route("/logout", web::post().to(routes::log_out)),
             )
-            .route("/admin/password", web::post().to(routes::change_password))
-            .route("/admin/logout", web::post().to(routes::log_out))
             .route("/login", web::get().to(routes::login_form))
             .route("/login", web::post().to(routes::login))
             .route("/health_check", web::get().to(routes::health_check))

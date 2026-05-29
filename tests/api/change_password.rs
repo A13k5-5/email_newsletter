@@ -152,9 +152,7 @@ async fn changing_password_works() {
 
     // Act - part 3 - follow the redirect
     let html_page = test_app.get_change_password_html().await;
-    assert!(html_page.contains(
-        "<p><i>Your password has been changed.</i></p>",
-    ));
+    assert!(html_page.contains("<p><i>Your password has been changed.</i></p>",));
 
     // Act - part 4 - log out
     let response = test_app.post_logout().await;
@@ -172,5 +170,4 @@ async fn changing_password_works() {
         }))
         .await;
     assert_is_redirect_to(&response, "/admin/dashboard");
-
 }

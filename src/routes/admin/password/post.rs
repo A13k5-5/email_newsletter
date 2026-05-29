@@ -1,6 +1,6 @@
+use crate::authentication::middleware::UserId;
 use crate::authentication::{AuthError, Credentials, validate_credentials};
 use crate::routes::admin::dashboard::get_username;
-use crate::session_state::TypedSession;
 use crate::utils::{e500, see_other};
 use actix_web::{HttpResponse, web};
 use actix_web_flash_messages::FlashMessage;
@@ -15,14 +15,10 @@ pub struct FormData {
 
 pub async fn change_password(
     form: web::Form<FormData>,
-    session: TypedSession,
     db_pool: web::Data<sqlx::PgPool>,
+    user_id: web::ReqData<UserId>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let user_id = session.get_user_id().map_err(e500)?;
-    if user_id.is_none() {
-        return Ok(see_other("/login"));
-    }
-    let user_id = user_id.unwrap();
+    let user_id = user_id.into_inner();
     if form.new_password.expose_secret() != form.new_password_check.expose_secret() {
         FlashMessage::error(
             "You entered two different new passwords - the field values must match.",
@@ -30,7 +26,7 @@ pub async fn change_password(
         .send();
         return Ok(see_other("/admin/password"));
     }
-    let username = get_username(user_id, &db_pool).await.map_err(e500)?;
+    let username = get_username(*user_id, &db_pool).await.map_err(e500)?;
     let credentials = Credentials {
         username,
         password: form.0.current_password.clone(),
@@ -54,8 +50,8 @@ pub async fn change_password(
         .send();
         return Ok(see_other("/admin/password"));
     }
-    
-    crate::authentication::change_password(&db_pool, user_id, form.new_password.clone())
+
+    crate::authentication::change_password(&db_pool, *user_id, form.new_password.clone())
         .await
         .map_err(e500)?;
     FlashMessage::info("Your password has been changed.").send();

@@ -1,8 +1,8 @@
 use crate::telemetry::spawn_blocking_with_tracing;
 use anyhow::Context;
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use argon2::password_hash::rand_core::OsRng;
 use argon2::password_hash::SaltString;
+use argon2::password_hash::rand_core::OsRng;
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -92,7 +92,11 @@ async fn get_stored_credentials(
 }
 
 #[tracing::instrument(name = "Change password", skip(db_pool, new_password))]
-pub async fn change_password(db_pool: &PgPool, user_id: Uuid, new_password: SecretString) -> Result<(), anyhow::Error> {
+pub async fn change_password(
+    db_pool: &PgPool,
+    user_id: Uuid,
+    new_password: SecretString,
+) -> Result<(), anyhow::Error> {
     let password_hash = spawn_blocking_with_tracing(move || compute_password_hash(new_password))
         .await
         .context("Failed to spawn blocking task to compute password hash.")??;
@@ -104,7 +108,9 @@ pub async fn change_password(db_pool: &PgPool, user_id: Uuid, new_password: Secr
         "#,
         password_hash.expose_secret(),
         user_id,
-    ).execute(db_pool).await?;
+    )
+    .execute(db_pool)
+    .await?;
     Ok(())
 }
 
