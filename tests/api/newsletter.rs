@@ -1,4 +1,4 @@
-use crate::helpers::{ConfirmationLinks, TestApp, spawn_app, assert_is_redirect_to};
+use crate::helpers::{ConfirmationLinks, TestApp, assert_is_redirect_to, spawn_app};
 use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
@@ -91,11 +91,10 @@ async fn newsletters_returns_400_for_invalid_data() {
 
     let test_cases = vec![
         (
-
-        serde_json::json!({
-            "text_content": "Newsletter body as plain text.",
-            "html_content": "<p>Newsletter body as HTML</p>"
-        }),
+            serde_json::json!({
+                "text_content": "Newsletter body as plain text.",
+                "html_content": "<p>Newsletter body as HTML</p>"
+            }),
             "missing title",
         ),
         (

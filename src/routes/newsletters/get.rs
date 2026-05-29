@@ -8,23 +8,34 @@ pub async fn publish_newsletter_form(flash_messages: IncomingFlashMessages) -> H
     for m in flash_messages.iter() {
         writeln!(error_html, "<p><i>{}</i></p>", m.content()).unwrap()
     }
-    HttpResponse::Ok().body(
+    HttpResponse::Ok().body(format!(
         r#"
-        <form action="/newsletters" method="post">
-            <label>Title
-                <input type="text" name="title">
-            </label>
-            <br>
-            <label>HTML content
-                <textarea name="html_content"></textarea>
-            </label>
-            <br>
-            <label>Text content
-                <textarea name="text_content"></textarea>
-            </label>
-            <br>
-            <button type="submit">Publish</button>
-        </form>
+        <html lang="en">
+        <head>
+            <meta http-equiv="content-type" content="text/html; charset=utf-8">
+            <title>Publish newsletter issue</title>
+        </head>
+        <body>
+            {error_html}
+            <h1>Publish newsletter issue</h1>
+            <form action="/newsletters" method="post">
+                <label>Title
+                    <input type="text" name="title">
+                </label>
+                <br>
+                <label>HTML content
+                    <textarea name="html_content"></textarea>
+                </label>
+                <br>
+                <label>Text content
+                    <textarea name="text_content"></textarea>
+                </label>
+                <br>
+                <button type="submit">Publish</button>
+            </form>
+            <p><a href="/admin/dashboard">&lt;- Back</a></p>
+        </body>
+        </html>
         "#,
-    )
+    ))
 }
