@@ -19,7 +19,7 @@ use std::fmt::{Debug, Formatter};
 )]
 pub async fn publish_newsletter(
     pool: web::Data<PgPool>,
-    body: web::Json<BodyData>,
+    body: web::Form<FormData>,
     email_client: web::Data<EmailClient>,
     request: HttpRequest,
 ) -> Result<HttpResponse, PublishError> {
@@ -41,8 +41,8 @@ pub async fn publish_newsletter(
                     .send_email(
                         &subscriber.email,
                         &body.title,
-                        &body.content.html,
-                        &body.content.text,
+                        &body.html_content,
+                        &body.text_content,
                     )
                     .await
                     .with_context(|| {
@@ -64,15 +64,10 @@ pub async fn publish_newsletter(
 }
 
 #[derive(serde::Deserialize)]
-pub struct BodyData {
+pub struct FormData {
     title: String,
-    content: Content,
-}
-
-#[derive(serde::Deserialize)]
-pub struct Content {
-    text: String,
-    html: String,
+    html_content: String,
+    text_content: String,
 }
 
 struct ConfirmedSubscriber {

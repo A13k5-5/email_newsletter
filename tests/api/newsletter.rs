@@ -17,14 +17,12 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
 
     let newsletter_request_body = serde_json::json!({
         "title": "Newsletter title",
-        "content": {
-            "text": "Newsletter body as plain text.",
-            "html": "<p>Newsletter body as HTML</p>"
-        }
+        "text_content": "Newsletter body as plain text.",
+        "html_content": "<p>Newsletter body as HTML</p>"
     });
 
     // Act
-    let response = test_app.post_newsletters(newsletter_request_body).await;
+    let response = test_app.post_newsletters(&newsletter_request_body).await;
 
     // Assert
     assert_eq!(response.status().as_u16(), 200);
@@ -44,14 +42,12 @@ async fn newsletters_are_delivered_to_confirmed_subscribers() {
 
     let newsletter_request_body = serde_json::json!({
         "title": "Newsletter title",
-        "content": {
-            "text": "Newsletter body as plain text.",
-            "html": "<p>Newsletter body as HTML</p>"
-        }
+        "text_content": "Newsletter body as plain text.",
+        "html_content": "<p>Newsletter body as HTML</p>"
     });
 
     // Act
-    let response = test_app.post_newsletters(newsletter_request_body).await;
+    let response = test_app.post_newsletters(&newsletter_request_body).await;
 
     // Assert
     assert_eq!(response.status().as_u16(), 200);
@@ -65,12 +61,11 @@ async fn newsletters_returns_400_for_invalid_data() {
 
     let test_cases = vec![
         (
-            serde_json::json!({
-                "content": {
-                    "text": "Newsletter body as plain text.",
-                    "html": "<p>Newsletter body as HTML</p>"
-                }}
-            ),
+
+        serde_json::json!({
+            "text_content": "Newsletter body as plain text.",
+            "html_content": "<p>Newsletter body as HTML</p>"
+        }),
             "missing title",
         ),
         (
@@ -84,7 +79,7 @@ async fn newsletters_returns_400_for_invalid_data() {
 
     for (invalid_body, error_msg) in test_cases {
         // Act
-        let response = test_app.post_newsletters(invalid_body).await;
+        let response = test_app.post_newsletters(&invalid_body).await;
 
         // Assert
         assert_eq!(
@@ -104,12 +99,10 @@ async fn requests_missing_authorization_are_rejected() {
     // Act
     let response = reqwest::Client::new()
         .post(&format!("{}/newsletters", test_app.address))
-        .json(&serde_json::json!({
-            "title": "Some title",
-            "content": {
-                "text": "Plain text content.",
-                "html": "HTML content"
-            }
+        .form(&serde_json::json!({
+            "title": "Newsletter title",
+            "text_content": "Newsletter body as plain text.",
+            "html_content": "<p>Newsletter body as HTML</p>"
         }))
         .send()
         .await
@@ -134,17 +127,15 @@ async fn non_existing_user_is_rejected() {
 
     let body = serde_json::json!({
         "title": "Newsletter title",
-        "content": {
-            "text": "Newsletter body as plain text.",
-            "html": "<p>Newsletter body as HTML</p>",
-        }
+        "text_content": "Newsletter body as plain text.",
+        "html_content": "<p>Newsletter body as HTML</p>"
     });
 
     // Act
     let response = reqwest::Client::new()
         .post(&format!("{}/newsletters", test_app.address))
         .basic_auth(&username, Some(&password))
-        .json(&body)
+        .form(&body)
         .send()
         .await
         .expect("Failed to execute request.");
@@ -168,17 +159,15 @@ async fn invalid_password_is_rejected() {
 
     let body = serde_json::json!({
         "title": "Newsletter title",
-        "content": {
-            "text": "Newsletter body as plain text.",
-            "html": "<p>Newsletter body as HTML</p>",
-        }
+        "text_content": "Newsletter body as plain text.",
+        "html_content": "<p>Newsletter body as HTML</p>"
     });
 
     // Act
     let response = reqwest::Client::new()
         .post(&format!("{}/newsletters", test_app.address))
         .basic_auth(&username, Some(&password))
-        .json(&body)
+        .form(&body)
         .send()
         .await
         .expect("Failed to execute request.");
