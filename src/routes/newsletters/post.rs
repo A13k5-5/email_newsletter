@@ -11,28 +11,18 @@ use base64::Engine;
 use secrecy::SecretString;
 use sqlx::PgPool;
 use std::fmt::{Debug, Formatter};
+use crate::authentication::middleware::UserId;
 
 #[tracing::instrument(
     name = "Publish a newsletter issue",
-    skip(pool, body, email_client, request),
-    fields(username=tracing::field::Empty, user_id=tracing::field::Empty)
+    skip(pool, body, email_client),
 )]
 pub async fn publish_newsletter(
     pool: web::Data<PgPool>,
     body: web::Form<FormData>,
     email_client: web::Data<EmailClient>,
-    request: HttpRequest,
+    _user_id: web::ReqData<UserId>,
 ) -> Result<HttpResponse, PublishError> {
-    let credentials = basic_authentication(request.headers()).map_err(PublishError::AuthError)?;
-    tracing::Span::current().record("username", &tracing::field::display(&credentials.username));
-    let user_id = validate_credentials(credentials, &pool)
-        .await
-        .map_err(|e| match e {
-            AuthError::InvalidCredentials(_) => PublishError::AuthError(e.into()),
-            AuthError::UnexpectedError(_) => PublishError::UnexpectedError(e.into()),
-        })?;
-    tracing::Span::current().record("user_id", &tracing::field::display(&user_id));
-
     let subscribers = get_confirmed_subscribers(&pool).await?;
     for subscriber in subscribers {
         match subscriber {

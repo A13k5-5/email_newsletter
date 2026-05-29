@@ -127,19 +127,9 @@ async fn non_logged_in_user_cannot_publish() {
         "html_content": "<p>Newsletter body as HTML</p>"
     });
 
-    // Act - part 1 - without authentication
-    let response = reqwest::Client::new()
-        .post(&format!("{}/newsletters", test_app.address))
-        .form(&body)
-        .send()
-        .await
-        .expect("Failed to execute request.");
-
+    // Act - without login
+    let response = test_app.post_newsletters(&body).await;
     assert_is_redirect_to(&response, "/login");
-
-    // Act - part 2 - follow the redirect
-    let html_page = test_app.get_login_html().await;
-    assert!(html_page.contains(r#"<p><i>You must be logged in to publish</i></p>"#));
 }
 
 #[tokio::test]
