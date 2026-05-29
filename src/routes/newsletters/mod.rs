@@ -1,5 +1,5 @@
-mod post;
 mod get;
+mod post;
 
-pub use post::publish_newsletter;
 pub use get::publish_newsletter_form;
+pub use post::publish_newsletter;

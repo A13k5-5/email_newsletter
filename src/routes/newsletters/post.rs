@@ -1,22 +1,19 @@
-use crate::authentication::{AuthError, Credentials, validate_credentials};
+use crate::authentication::Credentials;
+use crate::authentication::middleware::UserId;
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
 use crate::routes::error_chain_fmt;
 use actix_web::body::BoxBody;
 use actix_web::http::header::{HeaderMap, HeaderValue};
 use actix_web::http::{StatusCode, header};
-use actix_web::{HttpRequest, HttpResponse, ResponseError, web};
+use actix_web::{HttpResponse, ResponseError, web};
 use anyhow::Context;
 use base64::Engine;
 use secrecy::SecretString;
 use sqlx::PgPool;
 use std::fmt::{Debug, Formatter};
-use crate::authentication::middleware::UserId;
 
-#[tracing::instrument(
-    name = "Publish a newsletter issue",
-    skip(pool, body, email_client),
-)]
+#[tracing::instrument(name = "Publish a newsletter issue", skip(pool, body, email_client))]
 pub async fn publish_newsletter(
     pool: web::Data<PgPool>,
     body: web::Form<FormData>,

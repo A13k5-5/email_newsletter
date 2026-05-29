@@ -132,10 +132,6 @@ impl TestApp {
             .expect("Failed to execute request.")
     }
 
-    pub async fn get_publish_newsletter_html(&self) -> String {
-        self.get_publish_newsletter().await.text().await.unwrap()
-    }
-
     pub async fn get_admin_dashboard(&self) -> Response {
         self.api_client
             .get(&format!("{}/admin/dashboard", &self.address))

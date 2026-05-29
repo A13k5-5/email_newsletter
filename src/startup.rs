@@ -1,20 +1,20 @@
 use super::routes;
+use crate::authentication::middleware::reject_anonymous_users;
 use crate::configuration::{DatabaseSettings, Settings};
 use crate::email_client::EmailClient;
 use actix_session::SessionMiddleware;
 use actix_session::storage::RedisSessionStore;
 use actix_web::cookie::Key;
 use actix_web::dev::Server;
-use actix_web::web::{route, Data};
+use actix_web::middleware::from_fn;
+use actix_web::web::Data;
 use actix_web::{App, HttpServer, web};
 use actix_web_flash_messages::FlashMessagesFramework;
 use actix_web_flash_messages::storage::CookieMessageStore;
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::PgPool;
 use std::net::TcpListener;
-use actix_web::middleware::from_fn;
 use tracing_actix_web::TracingLogger;
-use crate::authentication::middleware::reject_anonymous_users;
 
 pub struct Application {
     port: u16,
@@ -103,8 +103,11 @@ async fn run(
                     .route("/password", web::get().to(routes::change_password_form))
                     .route("/password", web::post().to(routes::change_password))
                     .route("/logout", web::post().to(routes::log_out))
-                    .route("/newsletters", web::get().to(routes::publish_newsletter_form))
-                    .route("/newsletters", web::post().to(routes::publish_newsletter))
+                    .route(
+                        "/newsletters",
+                        web::get().to(routes::publish_newsletter_form),
+                    )
+                    .route("/newsletters", web::post().to(routes::publish_newsletter)),
             )
             .route("/login", web::get().to(routes::login_form))
             .route("/login", web::post().to(routes::login))
