@@ -9,6 +9,8 @@ use actix_web::{HttpResponse, ResponseError, web};
 use anyhow::Context;
 use sqlx::PgPool;
 use std::fmt::{Debug, Formatter};
+use actix_web_flash_messages::FlashMessage;
+use crate::utils::see_other;
 
 #[tracing::instrument(name = "Publish a newsletter issue", skip(pool, body, email_client))]
 pub async fn publish_newsletter(
@@ -44,7 +46,8 @@ pub async fn publish_newsletter(
         }
     }
 
-    Ok(HttpResponse::Ok().finish())
+    FlashMessage::info("The newsletter issue has been published!").send();
+    Ok(see_other("/admin/newsletters"))
 }
 
 #[derive(serde::Deserialize)]

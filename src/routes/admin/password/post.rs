@@ -42,14 +42,14 @@ pub async fn change_password(
         };
     }
     // Check if new password is in the allowed length range (> 12 and < 129 characters)
-    // let password_length = form.new_password.expose_secret().len();
-    // if password_length <= 12 || password_length >= 129 {
-    //     FlashMessage::error(
-    //         "The new password must be longer than 12 and shorter than 129 characters.",
-    //     )
-    //     .send();
-    //     return Ok(see_other("/admin/password"));
-    // }
+    let password_length = form.new_password.expose_secret().len();
+    if password_length <= 12 || password_length >= 129 {
+        FlashMessage::error(
+            "The new password must be longer than 12 and shorter than 129 characters.",
+        )
+        .send();
+        return Ok(see_other("/admin/password"));
+    }
 
     crate::authentication::change_password(&db_pool, *user_id, form.new_password.clone())
         .await
