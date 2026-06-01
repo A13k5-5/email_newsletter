@@ -1,4 +1,5 @@
 use crate::helpers::{ConfirmationLinks, TestApp, assert_is_redirect_to, spawn_app};
+use std::time::Duration;
 use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
@@ -216,6 +217,39 @@ async fn newsletter_creation_is_idempotent() {
     // Act - part 4 - follow the redirect again
     let html_page = test_app.get_publish_newsletter_html().await;
     assert!(html_page.contains("<p><i>The newsletter issue has been published!</i></p>"));
+}
+
+#[tokio::test]
+async fn concurrent_from_submission_is_handled_gracefully() {
+    // Arrange
+    let test_app = spawn_app().await;
+    create_confirmed_subscriber(&test_app).await;
+    test_app.login_as_test_user().await;
+
+    let _mock_guard = Mock::given(path("/email"))
+        .and(method("Post"))
+        // Setting a long delay to ensure that the second request is processed before the first one completes
+        .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(2)))
+        .expect(1)
+        .mount_as_scoped(&test_app.email_server)
+        .await;
+
+    // Act - Submit two newsletter forms concurrently
+    let newsletter_request_body = serde_json::json!({
+        "title": "Newsletter title",
+        "text_content": "Newsletter body as plain text.",
+        "html_content": "<p>Newsletter body as HTML</p>",
+        "idempotency_key": uuid::Uuid::new_v4().to_string(),
+    });
+    let response1 = test_app.post_newsletters(&newsletter_request_body);
+    let response2 = test_app.post_newsletters(&newsletter_request_body);
+    let (response1, response2) = tokio::join!(response1, response2);
+
+    assert_eq!(response1.status(), response2.status());
+    assert_eq!(
+        response1.text().await.unwrap(),
+        response2.text().await.unwrap()
+    );
 }
 
 async fn create_confirmed_subscriber(app: &TestApp) {

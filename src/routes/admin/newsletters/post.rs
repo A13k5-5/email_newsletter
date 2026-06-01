@@ -1,7 +1,9 @@
 use crate::authentication::middleware::UserId;
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
-use crate::idempotency::{IdempotencyKey, get_saved_response, save_response};
+use crate::idempotency::{
+    IdempotencyKey, NextAction, save_response, try_processing,
+};
 use crate::routes::error_chain_fmt;
 use crate::utils::{e400, e500, see_other};
 use actix_web::body::BoxBody;
@@ -13,9 +15,9 @@ use anyhow::Context;
 use sqlx::PgPool;
 use std::fmt::{Debug, Formatter};
 
-#[tracing::instrument(name = "Publish a newsletter issue", skip(pool, form, email_client))]
+#[tracing::instrument(name = "Publish a newsletter issue", skip(db_pool, form, email_client))]
 pub async fn publish_newsletter(
-    pool: web::Data<PgPool>,
+    db_pool: web::Data<PgPool>,
     form: web::Form<FormData>,
     email_client: web::Data<EmailClient>,
     user_id: web::ReqData<UserId>,
@@ -27,16 +29,20 @@ pub async fn publish_newsletter(
         idempotency_key,
     } = form.0;
     let idempotency_key: IdempotencyKey = idempotency_key.try_into().map_err(e400)?;
-    // Return early if we have a saved response in the database
-    if let Some(saved_response) = get_saved_response(&pool, &idempotency_key, **user_id)
+
+    match try_processing(&db_pool, &idempotency_key, **user_id)
         .await
         .map_err(e500)?
     {
-        FlashMessage::info("The newsletter issue has been published!").send();
-        return Ok(saved_response);
+        NextAction::StartProcessing => {} // actually done after this match block
+        // Return early if we have a saved response in the database
+        NextAction::ReturnSavedResponse(saved_response) => {
+            success_message().send();
+            return Ok(saved_response);
+        }
     }
 
-    let subscribers = get_confirmed_subscribers(&pool).await.map_err(e500)?;
+    let subscribers = get_confirmed_subscribers(&db_pool).await.map_err(e500)?;
     for subscriber in subscribers {
         match subscriber {
             Ok(subscriber) => {
@@ -59,9 +65,9 @@ pub async fn publish_newsletter(
         }
     }
 
-    FlashMessage::info("The newsletter issue has been published!").send();
+    success_message().send();
     let response = see_other("/admin/newsletters");
-    let response = save_response(&pool, &idempotency_key, **user_id, response)
+    let response = save_response(&db_pool, &idempotency_key, **user_id, response)
         .await
         .map_err(e500)?;
     Ok(response)
@@ -135,4 +141,8 @@ impl ResponseError for PublishError {
             }
         }
     }
+}
+
+fn success_message() -> FlashMessage {
+    FlashMessage::info("The newsletter issue has been published!")
 }
