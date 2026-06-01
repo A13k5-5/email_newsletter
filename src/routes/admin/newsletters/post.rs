@@ -1,39 +1,43 @@
 use crate::authentication::middleware::UserId;
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
+use crate::idempotency::IdempotencyKey;
 use crate::routes::error_chain_fmt;
+use crate::utils::{e400, e500, see_other};
 use actix_web::body::BoxBody;
 use actix_web::http::header::HeaderValue;
 use actix_web::http::{StatusCode, header};
 use actix_web::{HttpResponse, ResponseError, web};
+use actix_web_flash_messages::FlashMessage;
 use anyhow::Context;
 use sqlx::PgPool;
 use std::fmt::{Debug, Formatter};
-use actix_web_flash_messages::FlashMessage;
-use crate::utils::see_other;
 
-#[tracing::instrument(name = "Publish a newsletter issue", skip(pool, body, email_client))]
+#[tracing::instrument(name = "Publish a newsletter issue", skip(pool, form, email_client))]
 pub async fn publish_newsletter(
     pool: web::Data<PgPool>,
-    body: web::Form<FormData>,
+    form: web::Form<FormData>,
     email_client: web::Data<EmailClient>,
     _user_id: web::ReqData<UserId>,
-) -> Result<HttpResponse, PublishError> {
-    let subscribers = get_confirmed_subscribers(&pool).await?;
+) -> Result<HttpResponse, actix_web::Error> {
+    let FormData {
+        title,
+        html_content,
+        text_content,
+        idempotency_key,
+    } = form.0;
+    let idempotency_key: IdempotencyKey = idempotency_key.try_into().map_err(e400)?;
+    let subscribers = get_confirmed_subscribers(&pool).await.map_err(e500)?;
     for subscriber in subscribers {
         match subscriber {
             Ok(subscriber) => {
                 email_client
-                    .send_email(
-                        &subscriber.email,
-                        &body.title,
-                        &body.html_content,
-                        &body.text_content,
-                    )
+                    .send_email(&subscriber.email, &title, &html_content, &text_content)
                     .await
                     .with_context(|| {
                         format!("Failed to send newsletter issue to {}", subscriber.email)
-                    })?;
+                    })
+                    .map_err(e500)?;
             }
             Err(error) => {
                 tracing::warn!(
@@ -55,6 +59,7 @@ pub struct FormData {
     title: String,
     html_content: String,
     text_content: String,
+    idempotency_key: String,
 }
 
 struct ConfirmedSubscriber {

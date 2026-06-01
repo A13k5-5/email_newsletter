@@ -42,7 +42,8 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
     let newsletter_request_body = serde_json::json!({
         "title": "Newsletter title",
         "text_content": "Newsletter body as plain text.",
-        "html_content": "<p>Newsletter body as HTML</p>"
+        "html_content": "<p>Newsletter body as HTML</p>",
+        "idempotency_key": uuid::Uuid::new_v4().to_string(),
     });
 
     // Act - part 1 - login
@@ -74,7 +75,8 @@ async fn newsletters_are_delivered_to_confirmed_subscribers() {
     let newsletter_request_body = serde_json::json!({
         "title": "Newsletter title",
         "text_content": "Newsletter body as plain text.",
-        "html_content": "<p>Newsletter body as HTML</p>"
+        "html_content": "<p>Newsletter body as HTML</p>",
+        "idempotency_key": uuid::Uuid::new_v4().to_string(),
     });
 
     // Act - part 1 - login
@@ -138,12 +140,44 @@ async fn non_logged_in_user_cannot_publish() {
     let body = serde_json::json!({
         "title": "Newsletter title",
         "text_content": "Newsletter body as plain text.",
-        "html_content": "<p>Newsletter body as HTML</p>"
+        "html_content": "<p>Newsletter body as HTML</p>",
+        "idempotency_key": uuid::Uuid::new_v4().to_string(),
     });
 
     // Act - without login
     let response = test_app.post_newsletters(&body).await;
     assert_is_redirect_to(&response, "/login");
+}
+
+#[tokio::test]
+async fn logged_in_users_can_publish() {
+    // Arrange
+    let test_app = spawn_app().await;
+    create_confirmed_subscriber(&test_app).await;
+    // Login
+    test_app.login_as_test_user().await;
+
+    let _mock_guard = Mock::given(path("/email"))
+        .and(method("Post"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount_as_scoped(&test_app.email_server)
+        .await;
+
+    let newsletter_request_body = serde_json::json!({
+        "title": "Newsletter title",
+        "text_content": "Newsletter body as plain text.",
+        "html_content": "<p>Newsletter body as HTML</p>",
+        "idempotency_key": uuid::Uuid::new_v4().to_string(),
+    });
+
+    // Act
+    let response = test_app.post_newsletters(&newsletter_request_body).await;
+    assert_is_redirect_to(&response, "/admin/newsletters");
+
+    // Act - follow the redirect
+    let html_page = test_app.get_publish_newsletter_html().await;
+    assert!(html_page.contains("<p><i>The newsletter issue has been published!</i></p>"));
 }
 
 #[tokio::test]

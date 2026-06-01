@@ -3,12 +3,15 @@ use actix_web_flash_messages::IncomingFlashMessages;
 use std::fmt::Write;
 
 #[tracing::instrument(name = "Display the newsletter publication form", skip(flash_messages))]
-pub async fn publish_newsletter_form(flash_messages: IncomingFlashMessages) -> HttpResponse {
+pub async fn publish_newsletter_form(
+    flash_messages: IncomingFlashMessages,
+) -> Result<HttpResponse, actix_web::Error> {
     let mut error_html = String::new();
     for m in flash_messages.iter() {
         writeln!(error_html, "<p><i>{}</i></p>", m.content()).unwrap()
     }
-    HttpResponse::Ok().body(format!(
+    let idempotency_key = uuid::Uuid::new_v4();
+    Ok(HttpResponse::Ok().body(format!(
         r#"
         <html lang="en">
         <head>
@@ -34,11 +37,12 @@ pub async fn publish_newsletter_form(flash_messages: IncomingFlashMessages) -> H
                     <placeholder="Text content of the newsletter issue"></textarea>
                 </label>
                 <br>
+                <input type="hidden" name="idempotency_key" value="{idempotency_key}">
                 <button type="submit">Publish</button>
             </form>
             <p><a href="/admin/dashboard">&lt;- Back</a></p>
         </body>
         </html>
         "#,
-    ))
+    )))
 }
