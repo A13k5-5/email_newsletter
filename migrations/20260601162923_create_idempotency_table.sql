@@ -1,6 +1,6 @@
 CREATE TYPE header_pair AS (
   key TEXT,
-  value TEXT
+  value BYTEA
 );
 
 CREATE TABLE idempotency (
