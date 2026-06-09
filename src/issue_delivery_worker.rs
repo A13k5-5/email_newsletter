@@ -1,15 +1,32 @@
-use std::time::Duration;
+use crate::configuration::Settings;
+use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
+use crate::startup::get_connection_pool;
 use sqlx::{Executor, PgPool, Postgres, Row, Transaction};
+use std::time::Duration;
 use tracing::Span;
 use tracing::field::display;
 use uuid::Uuid;
-use crate::domain::SubscriberEmail;
 
-async fn worker_loop(
-    db_pool: PgPool,
-    email_client: EmailClient
-) -> Result<(), anyhow::Error> {
+pub async fn run_worker_until_stopped(configuration: Settings) -> Result<(), anyhow::Error> {
+    let connection_pool = get_connection_pool(&configuration.database);
+
+    let sender_email = configuration
+        .email_client
+        .sender()
+        .expect("Invalid sender email address.");
+
+    let timeout = configuration.email_client.timeout();
+    let email_client = EmailClient::new(
+        configuration.email_client.base_url,
+        sender_email,
+        configuration.email_client.authorization_token,
+        timeout,
+    );
+    worker_loop(connection_pool, email_client).await
+}
+
+async fn worker_loop(db_pool: PgPool, email_client: EmailClient) -> Result<(), anyhow::Error> {
     loop {
         match try_execute_task(&db_pool, &email_client).await {
             Ok(ExecutionOutcome::TaskCompleted) => {
@@ -52,12 +69,15 @@ async fn try_execute_task(
     match SubscriberEmail::parse(email.clone()) {
         Ok(email) => {
             let issue = get_issue(db_pool, issue_id).await?;
-            if let Err(e) = email_client.send_email(
-                &email,
-                &issue.title,
-                &issue.html_content,
-                &issue.text_content,
-            ).await {
+            if let Err(e) = email_client
+                .send_email(
+                    &email,
+                    &issue.title,
+                    &issue.html_content,
+                    &issue.text_content,
+                )
+                .await
+            {
                 // if sending the email fails
                 tracing::error!(error.cause_chain = ?e, error.message = ?e, "Failed to send newsletter issue to a confirmed subscriber. Skipping");
             };
