@@ -68,7 +68,8 @@ pub async fn save_response(
         h
     };
 
-    let query = sqlx::query_unchecked!(r#"
+    let query = sqlx::query_unchecked!(
+        r#"
         UPDATE idempotency SET
             response_status_code = $3,
             response_headers = $4,
@@ -79,7 +80,8 @@ pub async fn save_response(
         idempotency_key.as_ref(),
         status_code,
         headers,
-        body.as_ref());
+        body.as_ref()
+    );
     transaction.execute(query).await?;
     transaction.commit().await?;
 
