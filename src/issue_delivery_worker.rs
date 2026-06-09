@@ -1,9 +1,35 @@
+use std::time::Duration;
 use crate::email_client::EmailClient;
 use sqlx::{Executor, PgPool, Postgres, Row, Transaction};
 use tracing::Span;
 use tracing::field::display;
 use uuid::Uuid;
 use crate::domain::SubscriberEmail;
+
+async fn worker_loop(
+    db_pool: PgPool,
+    email_client: EmailClient
+) -> Result<(), anyhow::Error> {
+    loop {
+        match try_execute_task(&db_pool, &email_client).await {
+            Ok(ExecutionOutcome::TaskCompleted) => {
+                // do nothing, just try to execute the next task immediately
+            }
+            Ok(ExecutionOutcome::EmptyQueue) => {
+                // if the queue is empty, wait for a while before trying again
+                tokio::time::sleep(Duration::from_secs(10)).await;
+            }
+            Err(_) => {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+        }
+    }
+}
+
+enum ExecutionOutcome {
+    TaskCompleted,
+    EmptyQueue,
+}
 
 #[tracing::instrument(skip_all, fields(
     newsletter_issue_id = tracing::field::Empty,
@@ -12,31 +38,38 @@ use crate::domain::SubscriberEmail;
 async fn try_execute_task(
     db_pool: &PgPool,
     email_client: &EmailClient,
-) -> Result<(), anyhow::Error> {
-    if let Some((transaction, issue_id, email)) = dequeue_task(db_pool).await? {
-        Span::current()
-            .record("newsletter_issue_id", &display(issue_id))
-            .record("subscriber_email", &display(&email));
-        match SubscriberEmail::parse(email.clone()) {
-            Ok(email) => {
-                let issue = get_issue(db_pool, issue_id).await?;
-                if let Err(e) = email_client.send_email(
-                    &email,
-                    &issue.title,
-                    &issue.html_content,
-                    &issue.text_content,
-                ).await {
-                    // if sending the email fails
-                    tracing::error!(error.cause_chain = ?e, error.message = ?e, "Failed to send newsletter issue to a confirmed subscriber. Skipping");
-                };
-            }
-            Err(e) => {
-                tracing::error!(error.cause_chain = ?e, error.message = ?e, "Skipping a confirmed subscriber, their stored contact details are invalid.");
-            }
-        }
-        delete_task(transaction, issue_id, &email).await?;
+) -> Result<ExecutionOutcome, anyhow::Error> {
+    let task = dequeue_task(db_pool).await?;
+    if task.is_none() {
+        return Ok(ExecutionOutcome::EmptyQueue);
     }
-    Ok(())
+
+    let (transaction, issue_id, email) = task.unwrap();
+
+    Span::current()
+        .record("newsletter_issue_id", &display(issue_id))
+        .record("subscriber_email", &display(&email));
+    match SubscriberEmail::parse(email.clone()) {
+        Ok(email) => {
+            let issue = get_issue(db_pool, issue_id).await?;
+            if let Err(e) = email_client.send_email(
+                &email,
+                &issue.title,
+                &issue.html_content,
+                &issue.text_content,
+            ).await {
+                // if sending the email fails
+                tracing::error!(error.cause_chain = ?e, error.message = ?e, "Failed to send newsletter issue to a confirmed subscriber. Skipping");
+            };
+        }
+        Err(e) => {
+            tracing::error!(error.cause_chain = ?e, error.message = ?e, "Skipping a confirmed subscriber, their stored contact details are invalid.");
+        }
+    }
+
+    delete_task(transaction, issue_id, &email).await?;
+
+    Ok(ExecutionOutcome::TaskCompleted)
 }
 
 type PgTransaction = Transaction<'static, Postgres>;
