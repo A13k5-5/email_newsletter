@@ -27,7 +27,7 @@ fn report_exit(task_name: &str, outcome: Result<Result<(), impl Debug + Display>
     match outcome {
         Ok(Ok(())) => {
             tracing::info!("{} has exited", task_name)
-        },
+        }
         Ok(Err(e)) => {
             tracing::error!(error.cause_chain = ?e, error.message = %e, "{} failed", task_name)
         }
