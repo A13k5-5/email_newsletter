@@ -4,7 +4,7 @@ use crate::utils::{e400, e500, see_other};
 use actix_web::{HttpResponse, web};
 use actix_web_flash_messages::FlashMessage;
 use anyhow::Context;
-use sqlx::{Executor, PgPool, Postgres, Transaction};
+use sqlx::{Executor, PgPool, PgTransaction, Postgres, Row, Transaction};
 use uuid::Uuid;
 
 #[tracing::instrument(name = "Publish a newsletter issue", skip(db_pool, form))]
@@ -58,6 +58,10 @@ pub struct FormData {
     idempotency_key: String,
 }
 
+fn success_message() -> FlashMessage {
+    FlashMessage::info("The newsletter issue has been accepted - emails will go out shortly.")
+}
+
 #[tracing::instrument(skip_all)]
 async fn insert_newsletter_issue(
     transaction: &mut Transaction<'_, Postgres>,
@@ -65,7 +69,7 @@ async fn insert_newsletter_issue(
     text_content: &str,
     html_content: &str,
 ) -> Result<Uuid, sqlx::Error> {
-    let newsletter_issue_id = uuid::Uuid::new_v4();
+    let newsletter_issue_id = Uuid::new_v4();
     let query = sqlx::query!(
         r#"
     INSERT INTO newsletter_issue (newsletter_issue_id, title, text_content, html_content, published_at)
@@ -80,6 +84,7 @@ async fn insert_newsletter_issue(
     Ok(newsletter_issue_id)
 }
 
+/// For each confirmed subscriber, create a delivery task in the `issue_delivery_queue` table.
 #[tracing::instrument(skip_all)]
 async fn enqueue_delivery_tasks(
     transaction: &mut Transaction<'_, Postgres>,
@@ -94,8 +99,4 @@ SELECT $1, email FROM subscriptions WHERE status = 'confirmed'
     );
     transaction.execute(query).await?;
     Ok(())
-}
-
-fn success_message() -> FlashMessage {
-    FlashMessage::info("The newsletter issue has been published!")
 }
