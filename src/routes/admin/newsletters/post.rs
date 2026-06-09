@@ -4,7 +4,7 @@ use crate::utils::{e400, e500, see_other};
 use actix_web::{HttpResponse, web};
 use actix_web_flash_messages::FlashMessage;
 use anyhow::Context;
-use sqlx::{Executor, PgPool, PgTransaction, Postgres, Row, Transaction};
+use sqlx::{Executor, PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 #[tracing::instrument(name = "Publish a newsletter issue", skip(db_pool, form))]

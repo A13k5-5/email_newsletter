@@ -58,7 +58,9 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
 
     // Act - part 3 - follow the redirect
     let html_page = test_app.get_publish_newsletter_html().await;
-    assert!(html_page.contains("<p><i>The newsletter issue has been published!</i></p>"));
+    assert!(html_page.contains("<p><i>The newsletter issue has been accepted - emails will go out shortly.</i></p>"));
+
+    test_app.dispatch_all_pending_emails().await;
 }
 
 #[tokio::test]
@@ -89,8 +91,9 @@ async fn newsletters_are_delivered_to_confirmed_subscribers() {
 
     // Act - part 3 - follow the redirect
     let html_page = test_app.get_publish_newsletter_html().await;
-    assert!(html_page.contains("<p><i>The newsletter issue has been published!</i></p>"));
+    assert!(html_page.contains("<p><i>The newsletter issue has been accepted - emails will go out shortly.</i></p>"));
 
+    test_app.dispatch_all_pending_emails().await;
     // Mock verifies on drop that we have sent the newsletter email
 }
 
@@ -178,7 +181,8 @@ async fn logged_in_users_can_publish() {
 
     // Act - follow the redirect
     let html_page = test_app.get_publish_newsletter_html().await;
-    assert!(html_page.contains("<p><i>The newsletter issue has been published!</i></p>"));
+    assert!(html_page.contains("<p><i>The newsletter issue has been accepted - emails will go out shortly.</i></p>"));
+    test_app.dispatch_all_pending_emails().await;
 }
 
 #[tokio::test]
@@ -191,6 +195,7 @@ async fn newsletter_creation_is_idempotent() {
     let _mock_guard = Mock::given(path("/email"))
         .and(method("Post"))
         .respond_with(ResponseTemplate::new(200))
+        // expect only one email to be send
         .expect(1)
         .mount_as_scoped(&test_app.email_server)
         .await;
@@ -208,7 +213,7 @@ async fn newsletter_creation_is_idempotent() {
 
     // Act - part 2 - follow the redirect
     let html_page = test_app.get_publish_newsletter_html().await;
-    assert!(html_page.contains("<p><i>The newsletter issue has been published!</i></p>"));
+    assert!(html_page.contains("<p><i>The newsletter issue has been accepted - emails will go out shortly.</i></p>"));
 
     // Act - part 3 - submit the same newsletter form again
     let response = test_app.post_newsletters(&newsletter_request_body).await;
@@ -216,7 +221,8 @@ async fn newsletter_creation_is_idempotent() {
 
     // Act - part 4 - follow the redirect again
     let html_page = test_app.get_publish_newsletter_html().await;
-    assert!(html_page.contains("<p><i>The newsletter issue has been published!</i></p>"));
+    assert!(html_page.contains("<p><i>The newsletter issue has been accepted - emails will go out shortly.</i></p>"));
+    test_app.dispatch_all_pending_emails().await;
 }
 
 #[tokio::test]
@@ -250,6 +256,7 @@ async fn concurrent_from_submission_is_handled_gracefully() {
         response1.text().await.unwrap(),
         response2.text().await.unwrap()
     );
+    test_app.dispatch_all_pending_emails().await;
 }
 
 async fn create_confirmed_subscriber(app: &TestApp) {
